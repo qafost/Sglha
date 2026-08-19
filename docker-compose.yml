@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: sglha-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: sglha
+      POSTGRES_PASSWORD: sglha_dev_password
+      POSTGRES_DB: sglha
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - sglha_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  sglha_postgres_data:
