@@ -4,6 +4,7 @@ import { getOrCreateConversation } from "../conversations/conversation.service.j
 import {
   createMessage,
   findMessageByWhatsAppId,
+  findRecentMessages
 } from "./message.repository.js";
 
 interface IncomingWhatsAppMessage {
@@ -41,29 +42,43 @@ export async function handleIncomingMessage(
   }
 
   const savedMessage = await createMessage({
-    conversationid: conversation.id,
-    userid: user.id,
-    whatsappMessageId: message.messageId,
-    direction: "incoming",
-    messageType: message.type,
-    content: message.content,
-  });
+  conversationid: conversation.id,
+  userid: user.id,
+  whatsappMessageId: message.messageId,
+  direction: "incoming",
+  messageType: message.type,
+  content: message.content
+});
 
-  return {
-    user,
-    conversation,
-    message: savedMessage,
-    duplicate: false,
-  };
+const recentMessages =
+  await findRecentMessages(conversation.id);
+
+  console.log(
+  "RECENT MESSAGES:",
+  recentMessages
+);
+
+return {
+  user,
+  conversation,
+  message: savedMessage,
+  recentMessages,
+  duplicate: false,
+};
 }
 
-export async function saveOutgoingMessage(
-  conversationId: string,
-  userId: string,
-  content: string,
-  whatsappMessageId?: string
-) {
-  const savedMessage = await createMessage({
+export async function saveOutgoingMessage({
+  conversationId,
+  userId,
+  whatsappMessageId,
+  content,
+}: {
+  conversationId: string;
+  userId: string;
+  whatsappMessageId: string;
+  content: string;
+}) {
+  return createMessage({
     conversationid: conversationId,
     userid: userId,
     whatsappMessageId,
@@ -71,6 +86,4 @@ export async function saveOutgoingMessage(
     messageType: "text",
     content,
   });
-
-  return savedMessage;
 }

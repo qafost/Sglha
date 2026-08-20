@@ -17,111 +17,184 @@ import {
   sendWhatsAppTextMessage,
 } from "../whatsapp/whatsapp.client.js";
 
+import {
+  generateMessageResponse,
+} from "../messages/message.response.service.js";
+
 export async function whatsappRoutes(
   app: FastifyInstance
 ) {
-  // Webhook verification
-  app.get("/webhooks/whatsapp", async (request, reply) => {
-    const query = request.query as {
-      "hub.mode"?: string;
-      "hub.verify_token"?: string;
-      "hub.challenge"?: string;
-    };
+  // ==========================================
+  // WhatsApp Webhook Verification
+  // ==========================================
 
-    const mode = query["hub.mode"];
-    const token = query["hub.verify_token"];
-    const challenge = query["hub.challenge"];
+  app.get(
+    "/webhooks/whatsapp",
+    async (request, reply) => {
+      const query = request.query as {
+        "hub.mode"?: string;
+        "hub.verify_token"?: string;
+        "hub.challenge"?: string;
+      };
 
-    const verifyToken =
-      process.env.WHATSAPP_VERIFY_TOKEN;
+      const mode =
+        query["hub.mode"];
 
-    if (
-      mode === "subscribe" &&
-      token === verifyToken
-    ) {
+      const token =
+        query["hub.verify_token"];
+
+      const challenge =
+        query["hub.challenge"];
+
+      const verifyToken =
+        process.env.WHATSAPP_VERIFY_TOKEN;
+
+      if (
+        mode === "subscribe" &&
+        token === verifyToken
+      ) {
+        return reply
+          .type("text/plain")
+          .send(challenge);
+      }
+
       return reply
-        .type("text/plain")
-        .send(challenge);
+        .code(403)
+        .send({
+          error: "Verification failed",
+        });
     }
+  );
 
-    return reply.code(403).send({
-      error: "Verification failed",
-    });
-  });
+  // ==========================================
+  // Receive WhatsApp Messages
+  // ==========================================
 
-  // Receive WhatsApp messages
-  app.post("/webhooks/whatsapp", async (request, reply) => {
-    console.log(
-      "WHATSAPP WEBHOOK:",
-      JSON.stringify(request.body, null, 2)
-    );
-
-    const payload =
-      request.body as WhatsAppWebhookPayload;
-
-    const message =
-      normalizeWhatsAppMessage(payload);
-
-    if (!message) {
-      return reply.code(200).send({
-        received: true,
-      });
-    }
-
-    console.log(
-      "NORMALIZED MESSAGE:",
-      message
-    );
-
-    const result =
-      await handleIncomingMessage(message);
-
-    // Ignore duplicate WhatsApp messages
-    if (result.duplicate) {
+  app.post(
+    "/webhooks/whatsapp",
+    async (request, reply) => {
       console.log(
-        "DUPLICATE MESSAGE:",
-        message.messageId
+        "WHATSAPP WEBHOOK:",
+        JSON.stringify(
+          request.body,
+          null,
+          2
+        )
       );
 
-      return reply.code(200).send({
-        received: true,
-      });
+      const payload =
+        request.body as WhatsAppWebhookPayload;
+
+      // ------------------------------------------
+      // Normalize WhatsApp message
+      // ------------------------------------------
+
+      const message =
+        normalizeWhatsAppMessage(payload);
+
+      // WhatsApp can send webhook events
+      // that are not actual messages.
+      if (!message) {
+        return reply
+          .code(200)
+          .send({
+            received: true,
+          });
+      }
+
+      console.log(
+        "NORMALIZED MESSAGE:",
+        message
+      );
+
+      // ------------------------------------------
+      // Save incoming message
+      // ------------------------------------------
+
+      const result =
+        await handleIncomingMessage(
+          message
+        );
+
+      console.log(
+        "MESSAGE RESULT:",
+        result
+      );
+
+      // ------------------------------------------
+      // Ignore duplicate messages
+      // ------------------------------------------
+
+      if (result.duplicate) {
+        return reply
+          .code(200)
+          .send({
+            received: true,
+            duplicate: true,
+          });
+      }
+
+      // ------------------------------------------
+      // Generate response
+      // ------------------------------------------
+
+      const responseText =
+        await generateMessageResponse({
+          messages:
+            result.recentMessages,
+        });
+
+      console.log(
+        "GENERATED RESPONSE:",
+        responseText
+      );
+
+      // ------------------------------------------
+      // Send response to WhatsApp
+      // ------------------------------------------
+
+      const whatsappResponse =
+        await sendWhatsAppTextMessage({
+          phoneNumber:
+            message.phoneNumber,
+
+          message:
+            responseText,
+        });
+
+      // ------------------------------------------
+      // Save outgoing message
+      // ------------------------------------------
+
+      const outgoingMessage =
+        await saveOutgoingMessage({
+          conversationId:
+            result.conversation.id,
+
+          userId:
+            result.user.id,
+
+          whatsappMessageId:
+            whatsappResponse.messages?.[0]?.id,
+
+          content:
+            responseText,
+        });
+
+      console.log(
+        "OUTGOING MESSAGE SAVED:",
+        outgoingMessage
+      );
+
+      // ------------------------------------------
+      // Return success to Meta
+      // ------------------------------------------
+
+      return reply
+        .code(200)
+        .send({
+          received: true,
+        });
     }
-
-    const replyText = "يارب ديمان😇 ؟";
-
-    // Send response to WhatsApp
-    const sendResult =
-      await sendWhatsAppTextMessage({
-        phoneNumber: message.phoneNumber,
-        message: replyText,
-      });
-
-    // Get WhatsApp message ID
-    const outgoingWhatsAppMessageId =
-      sendResult?.messages?.[0]?.id;
-
-    // Save outgoing message in database
-    const savedOutgoingMessage =
-      await saveOutgoingMessage(
-        result.conversation.id,
-        result.user.id,
-        replyText,
-        outgoingWhatsAppMessageId
-      );
-
-    console.log(
-      "OUTGOING MESSAGE SAVED:",
-      savedOutgoingMessage
-    );
-
-    console.log(
-      "MESSAGE RESULT:",
-      result
-    );
-
-    return reply.code(200).send({
-      received: true,
-    });
-  });
+  );
 }

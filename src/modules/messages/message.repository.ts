@@ -64,3 +64,21 @@ export async function createMessage(
 
   return result.rows[0];
 }
+
+export async function findRecentMessages(
+  conversationId: string
+): Promise<Message[]> {
+  const result = await db.query<Message>(
+    `
+      SELECT *
+      FROM messages
+      WHERE conversation_id = $1
+      ORDER BY created_at DESC
+      LIMIT 20
+    `,
+    [conversationId]
+  );
+
+  return result.rows.reverse();
+}
+
