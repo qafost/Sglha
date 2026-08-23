@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import "dotenv/config";
 
+
 import { db } from "./database/client.js";
 import { handleIncomingMessage } from "./modules/messages/message.service.js";
 

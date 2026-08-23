@@ -1,10 +1,15 @@
-import { findOrCreateUser } from "../users/user.service.js";
-import { getOrCreateConversation } from "../conversations/conversation.service.js";
+import {
+  findOrCreateUser,
+} from "../users/user.service.js";
+
+import {
+  getOrCreateConversation,
+} from "../conversations/conversation.service.js";
 
 import {
   createMessage,
   findMessageByWhatsAppId,
-  findRecentMessages
+  findRecentMessages,
 } from "./message.repository.js";
 
 interface IncomingWhatsAppMessage {
@@ -18,14 +23,16 @@ interface IncomingWhatsAppMessage {
 export async function handleIncomingMessage(
   message: IncomingWhatsAppMessage
 ) {
-  const user = await findOrCreateUser(
-    message.whatsappId,
-    message.phoneNumber
-  );
+  const user =
+    await findOrCreateUser(
+      message.whatsappId,
+      message.phoneNumber
+    );
 
-  const conversation = await getOrCreateConversation(
-    user.id
-  );
+  const conversation =
+    await getOrCreateConversation(
+      user.id
+    );
 
   const existingMessage =
     await findMessageByWhatsAppId(
@@ -37,34 +44,44 @@ export async function handleIncomingMessage(
       user,
       conversation,
       message: existingMessage,
+      recentMessages: [],
       duplicate: true,
     };
   }
 
-  const savedMessage = await createMessage({
-  conversationid: conversation.id,
-  userid: user.id,
-  whatsappMessageId: message.messageId,
-  direction: "incoming",
-  messageType: message.type,
-  content: message.content
-});
+  const savedMessage =
+    await createMessage({
+      conversationid:
+        conversation.id,
 
-const recentMessages =
-  await findRecentMessages(conversation.id);
+      userid:
+        user.id,
 
-  console.log(
-  "RECENT MESSAGES:",
-  recentMessages
-);
+      whatsappMessageId:
+        message.messageId,
 
-return {
-  user,
-  conversation,
-  message: savedMessage,
-  recentMessages,
-  duplicate: false,
-};
+      direction:
+        "incoming",
+
+      messageType:
+        message.type,
+
+      content:
+        message.content,
+    });
+
+  const recentMessages =
+    await findRecentMessages(
+      conversation.id
+    );
+
+  return {
+    user,
+    conversation,
+    message: savedMessage,
+    recentMessages,
+    duplicate: false,
+  };
 }
 
 export async function saveOutgoingMessage({
@@ -75,15 +92,25 @@ export async function saveOutgoingMessage({
 }: {
   conversationId: string;
   userId: string;
-  whatsappMessageId: string;
+  whatsappMessageId?: string;
   content: string;
 }) {
+
   return createMessage({
-    conversationid: conversationId,
-    userid: userId,
+    conversationid:
+      conversationId,
+
+    userid:
+      userId,
+
     whatsappMessageId,
-    direction: "outgoing",
-    messageType: "text",
+
+    direction:
+      "outgoing",
+
+    messageType:
+      "text",
+
     content,
   });
 }

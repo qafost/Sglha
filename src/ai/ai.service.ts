@@ -1,45 +1,43 @@
-const OLLAMA_API_URL =
-  "https://ollama.com/api/chat";
-
-const OLLAMA_MODEL =
-  process.env.OLLAMA_MODEL ||
-  "gpt-oss:20b";
-
 interface AIMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-interface OllamaChatResponse {
-  message?: {
-    role: string;
-    content: string;
-  };
-}
+const OLLAMA_API_KEY =
+  process.env.OLLAMA_API_KEY;
+
+const OLLAMA_MODEL =
+  process.env.OLLAMA_MODEL;
+
+const OLLAMA_URL =
+  "https://ollama.com/api/chat";
 
 export async function generateAIResponse(
   messages: AIMessage[]
 ): Promise<string> {
-  const apiKey =
-    process.env.OLLAMA_API_KEY;
 
-  if (!apiKey) {
+  if (!OLLAMA_API_KEY) {
     throw new Error(
       "OLLAMA_API_KEY is missing"
     );
   }
 
+  if (!OLLAMA_MODEL) {
+    throw new Error(
+      "OLLAMA_MODEL is missing"
+    );
+  }
+
   const response = await fetch(
-    OLLAMA_API_URL,
+    OLLAMA_URL,
     {
       method: "POST",
 
       headers: {
-        "Content-Type":
-          "application/json",
+        "Content-Type": "application/json",
 
-        Authorization:
-          `Bearer ${apiKey}`,
+        "Authorization":
+          `Bearer ${OLLAMA_API_KEY}`,
       },
 
       body: JSON.stringify({
@@ -52,16 +50,11 @@ export async function generateAIResponse(
     }
   );
 
-  const data =
-    await response.json() as OllamaChatResponse;
+  const data = await response.json();
 
   console.log(
     "OLLAMA RESPONSE:",
-    JSON.stringify(
-      data,
-      null,
-      2
-    )
+    JSON.stringify(data, null, 2)
   );
 
   if (!response.ok) {
@@ -71,9 +64,12 @@ export async function generateAIResponse(
   }
 
   const content =
-    data.message?.content;
+    data?.message?.content;
 
-  if (!content) {
+  if (
+    typeof content !== "string" ||
+    !content.trim()
+  ) {
     throw new Error(
       "Ollama returned an empty response"
     );
