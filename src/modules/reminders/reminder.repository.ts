@@ -97,7 +97,7 @@ export async function findDueRemindersWithUser(): Promise<
 
         rec.user_id,
 
-        rec.conversation_id
+        r.conversation_id
 
       FROM reminders r
 
