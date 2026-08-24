@@ -107,39 +107,59 @@ async function processDueReminders() {
             "WhatsApp did not return a message ID"
           );
         }
+// ==========================================
+// Save Outgoing Message
+// ==========================================
+
+try {
+
+  if (reminder.conversation_id) {
+
+    await saveOutgoingMessage({
+
+      conversationId:
+        reminder.conversation_id,
+
+      userId:
+        reminder.user_id,
+
+      whatsappMessageId,
+
+      content:
+        reminderText,
+    });
+
+  } else {
+
+    console.warn(
+      "REMINDER: record has no conversation_id:",
+      reminder.id
+    );
+
+  }
+
+} catch (error) {
+
+  console.error(
+    "FAILED TO SAVE REMINDER MESSAGE:",
+    error
+  );
+
+}
 
 
-        // ==========================================
-        // Save outgoing message
-        // ==========================================
+// ==========================================
+// Mark Completed
+// ==========================================
 
-        await saveOutgoingMessage({
-          conversationId:
-            reminder.conversation_id,
+await markReminderAsCompleted(
+  reminder.id
+);
 
-          userId:
-            reminder.user_id,
-
-          whatsappMessageId,
-
-          content:
-            reminderText,
-        });
-
-
-        // ==========================================
-        // Mark reminder completed
-        // ==========================================
-
-        await markReminderAsCompleted(
-          reminder.id
-        );
-
-
-        console.log(
-          "REMINDER SENT SUCCESSFULLY:",
-          reminder.id
-        );
+console.log(
+  "REMINDER COMPLETED:",
+  reminder.id
+);
 
       } catch (error) {
 
@@ -199,6 +219,6 @@ export function startReminderWorker() {
       void processDueReminders();
 
     },
-    60 * 1000
+     1000
   );
 }

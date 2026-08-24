@@ -316,6 +316,9 @@ if (
 
       reminder:
         response.record.reminder ?? null,
+
+      conversationId: 
+        result.conversation.id,
     });
 
 

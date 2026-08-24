@@ -1,60 +1,88 @@
 import {
   createRecord,
   findRecordsByUserId,
-  deleteRecordsByUserId,
+  deleteAllUserRecords,
+  findRecordsWithDetailsByUserId,
 } from "./record.repository.js";
 
 import {
   createTask,
+  findTasksByRecordId,
 } from "../tasks/task.repository.js";
 
 import {
   createReminder,
+  findReminderByRecordId,
 } from "../reminders/reminder.repository.js";
+
+
+// ==================================================
+// Get User Records With Details
+// ==================================================
+
+export async function getUserRecordsWithDetails(
+  userId: string
+) {
+  return findRecordsWithDetailsByUserId(
+    userId
+  );
+}
+
 
 // ==================================================
 // Create Record
 // ==================================================
 
-export async function createUserRecord(input: {
-  userId: string;
+export async function createUserRecord(
+  input: {
+    userId: string;
 
-  title: string;
+    conversationId: string;
 
-  description: string;
-
-  tasks?: {
     title: string;
 
-    description?: string;
+    description: string;
 
-    dueAt?: string | null;
-  }[];
+    tasks?: {
+      title: string;
 
-  reminder?: {
-    remindAt: string;
+      description?: string;
 
-    message?: string;
-  } | null;
-}) {
+      dueAt?: string | null;
+    }[];
 
-  // ----------------------------------------------
+    reminder?: {
+      remindAt: string;
+
+      message?: string;
+    } | null;
+  }
+) {
+
+  // ================================================
   // Create Record
-  // ----------------------------------------------
+  // ================================================
 
   const record =
     await createRecord({
-      userId: input.userId,
 
-      title: input.title,
+      userId:
+        input.userId,
 
-      description: input.description,
+      conversationId:
+        input.conversationId,
+
+      title:
+        input.title,
+
+      description:
+        input.description,
     });
 
 
-  // ----------------------------------------------
+  // ================================================
   // Create Tasks
-  // ----------------------------------------------
+  // ================================================
 
   const tasks = [];
 
@@ -64,15 +92,18 @@ export async function createUserRecord(input: {
 
     const createdTask =
       await createTask({
-        recordId: record.id,
 
-        title: task.title,
+        recordId:
+          record.id,
+
+        title:
+          task.title,
 
         description:
           task.description,
 
         dueAt:
-          task.dueAt,
+          task.dueAt ?? null,
       });
 
     tasks.push(
@@ -81,9 +112,9 @@ export async function createUserRecord(input: {
   }
 
 
-  // ----------------------------------------------
+  // ================================================
   // Create Reminder
-  // ----------------------------------------------
+  // ================================================
 
   let reminder = null;
 
@@ -93,6 +124,7 @@ export async function createUserRecord(input: {
 
     reminder =
       await createReminder({
+
         recordId:
           record.id,
 
@@ -105,9 +137,9 @@ export async function createUserRecord(input: {
   }
 
 
-  // ----------------------------------------------
+  // ================================================
   // Return
-  // ----------------------------------------------
+  // ================================================
 
   return {
     record,
@@ -132,58 +164,35 @@ export async function getUserRecords(
       userId
     );
 
-
   const result = [];
-
 
   for (
     const record of records
   ) {
-
-    const {
-      findTasksByRecordId,
-    } =
-      await import(
-        "../tasks/task.repository.js"
-      );
-
-
-    const {
-      findReminderByRecordId,
-    } =
-      await import(
-        "../reminders/reminder.repository.js"
-      );
-
 
     const tasks =
       await findTasksByRecordId(
         record.id
       );
 
-
     const reminder =
       await findReminderByRecordId(
         record.id
       );
 
-
     result.push({
+
       record,
 
       tasks,
 
       reminder,
+
     });
   }
 
-
   return result;
 }
-
-
-
-
 
 
 // ==================================================
@@ -194,7 +203,7 @@ export async function deleteUserRecords(
   userId: string
 ): Promise<number> {
 
-  return deleteRecordsByUserId(
+  return deleteAllUserRecords(
     userId
   );
 }

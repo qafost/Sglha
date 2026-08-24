@@ -1,14 +1,23 @@
 import Fastify from "fastify";
 import "dotenv/config";
 
-
+import { startReminderWorker } from "../src/modules/reminders/reminder.worker.js";
 import { db } from "./database/client.js";
 import { handleIncomingMessage } from "./modules/messages/message.service.js";
 
 import { whatsappRoutes } from "./modules/whatsapp/whatsapp.routes.js";
+import { recordsRoutes } from "./modules/records/record.routes.js";
+import cors from "@fastify/cors";
+
 
 const app = Fastify({
   logger: true
+});
+
+await app.register(cors, {
+  origin: [
+    "http://localhost:5173",
+  ],
 });
 
 app.get("/", async () => {
@@ -56,6 +65,9 @@ app.post("/test/messages", async (request, reply) => {
 const PORT = Number(process.env.PORT) || 3000;
 
 await app.register(whatsappRoutes);
+await app.register(recordsRoutes);
+
+startReminderWorker();
 
 try {
   await app.listen({
